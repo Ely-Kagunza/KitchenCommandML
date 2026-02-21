@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # ML Service API
+  ml_api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ml_service_api
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://postgres:7826@host.docker.internal:5432/KITCHEN_COMMAND
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_WORKERS: 4
+      LOG_LEVEL: INFO
+      API_KEYS: key1,key2
+      DEBUG: "True"
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    networks:
+      - kitchen_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - redis
+
+  # Prometheus (Monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ml_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - kitchen_network
+    restart: unless-stopped
+
+  # Grafana (Dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ml_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - kitchen_network
+    restart: unless-stopped
+
+  # Reference to your existing Redis container
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - kitchen_network
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  kitchen_network:
+    driver: bridge
