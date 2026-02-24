@@ -1,34 +1,46 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+// frontend/src/App.tsx
+
+import React, { useEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DemandPage } from './pages/DemandPage'
+import { useThemeStore, initializeTheme } from './stores/themeStore'
+import { DEFAULT_RESTAURANT_ID } from './utils/constants'
 import './App.css'
 
+// Create a client for TanStack Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+/**
+ * Main App Component
+ */
 function App() {
-  const [count, setCount] = useState(0)
+  const { currentTheme } = useThemeStore()
+
+  // Initialize theme on app load
+  useEffect(() => {
+    initializeTheme()
+  }, [])
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <QueryClientProvider client={queryClient}>
+      <div
+        className="min-h-screen"
+        style={{
+          backgroundColor: currentTheme.colors.background,
+          color: currentTheme.colors.text,
+        }}
+      >
+        {/* Main Content */}
+        <DemandPage restaurantId={DEFAULT_RESTAURANT_ID} />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    </QueryClientProvider>
   )
 }
 

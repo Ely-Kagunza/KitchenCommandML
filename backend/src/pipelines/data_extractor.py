@@ -33,6 +33,22 @@ class RMSDataExtractor:
         )
         self.logger = logging.getLogger(__name__)
 
+    def _strip_timezones(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Strip timezone information from all datetime columns.
+        
+        Args:
+            df: DataFrame with potential timezone-aware columns
+            
+        Returns:
+            DataFrame with timezone-naive datetime columns
+        """
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]):
+                if hasattr(df[col].dt, 'tz') and df[col].dt.tz is not None:
+                    df[col] = df[col].dt.tz_convert('UTC').dt.tz_localize(None)
+        return df
+
     def extract_orders(
       self,
       restaurant_id: str,
@@ -86,6 +102,10 @@ class RMSDataExtractor:
                   'end_date': end_date
               }
           )
+          
+          # Strip timezone from all datetime columns
+          df = self._strip_timezones(df)
+          
           self.logger.info(f"Extracted {len(df)} order records")
           return df
       except Exception as e:
@@ -147,6 +167,7 @@ class RMSDataExtractor:
                     'end_date': end_date
                 }
             )
+            df = self._strip_timezones(df)
             self.logger.info(f"Extracted {len(df)} kitchen performance records")
             return df
         except Exception as e:
@@ -179,7 +200,7 @@ class RMSDataExtractor:
             COALESCE(SUM(o.grand_total), 0) as total_spent,
             COALESCE(AVG(o.grand_total), 0) as avg_order_value,
             MAX(o.created_at) as last_order_date,
-            COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(o.created_at)))/86400, 0) as days_since_last_order,
+            COALESCE(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - MAX(o.created_at AT TIME ZONE 'UTC')))/86400, 0) as days_since_last_order,
             COUNT(DISTINCT DATE(o.created_at)) as unique_order_days
         FROM crm_customerprofile cp
         LEFT JOIN crm_loyaltybalance lb ON cp.id = lb.customer_id
@@ -196,6 +217,7 @@ class RMSDataExtractor:
                     'restaurant_id': str(restaurant_id)
                 }
             )
+            df = self._strip_timezones(df)
             self.logger.info(f"Extracted {len(df)} customer records")
             return df
         except Exception as e:
@@ -251,6 +273,7 @@ class RMSDataExtractor:
                     'restaurant_id': str(restaurant_id)
                 }
             )
+            df = self._strip_timezones(df)
             self.logger.info(f"Extracted {len(df)} inventory records")
             return df
         except Exception as e:
@@ -304,6 +327,7 @@ class RMSDataExtractor:
                     'end_date': end_date
                 }
             )
+            df = self._strip_timezones(df)
             self.logger.info(f"Extracted {len(df)} payment records")
             return df
         except Exception as e:
@@ -362,6 +386,7 @@ class RMSDataExtractor:
                     'end_date': end_date.strftime('%Y-%m-%d')
                 }
             )
+            df = self._strip_timezones(df)
             self.logger.info(f"Extracted {len(df)} stock movement records")
             return df
         except Exception as e:

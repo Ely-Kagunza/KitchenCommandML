@@ -314,11 +314,13 @@ class FeatureEngineer:
         
         # Ensure created_at is timezone-naive
         if df_copy['created_at'].dt.tz is not None:
-            df_copy['created_at'] = df_copy['created_at'].dt.tz_localize(None)
+            df_copy['created_at'] = df_copy['created_at'].dt.tz_convert('UTC').dt.tz_localize(None)
         
         # Ensure target_time is timezone-naive
         if hasattr(target_time, 'tz') and target_time.tz is not None:
-            target_time = target_time.tz_localize(None)
+            target_time = target_time.tz_convert('UTC').tz_localize(None)
+        elif isinstance(target_time, pd.Timestamp) and target_time.tz is not None:
+            target_time = target_time.tz_convert('UTC').tz_localize(None)
         
         hour_df = df_copy[
             (df_copy['created_at'] >= target_time) &
@@ -348,11 +350,13 @@ class FeatureEngineer:
         
         # Ensure created_at is timezone-naive
         if df_copy['created_at'].dt.tz is not None:
-            df_copy['created_at'] = df_copy['created_at'].dt.tz_localize(None)
+            df_copy['created_at'] = df_copy['created_at'].dt.tz_convert('UTC').dt.tz_localize(None)
         
         # Ensure target_time is timezone-naive
         if hasattr(target_time, 'tz') and target_time.tz is not None:
-            target_time = target_time.tz_localize(None)
+            target_time = target_time.tz_convert('UTC').tz_localize(None)
+        elif isinstance(target_time, pd.Timestamp) and target_time.tz is not None:
+            target_time = target_time.tz_convert('UTC').tz_localize(None)
         
         start_time = target_time - timedelta(days=days)
         
