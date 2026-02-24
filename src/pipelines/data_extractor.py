@@ -35,15 +35,15 @@ class RMSDataExtractor:
 
     def extract_orders(
       self,
-      restauranr_id: int,
+      restaurant_id: str,
       start_date: str,
       end_date: str
     ) -> pd.DataFrame:
       """
-      Extract order data for demand forcasting.
+      Extract order data for demand forecasting.
 
       Args:
-          restaurant_id: Restaurant identifier
+          restaurant_id: Restaurant UUID
           start_date: Start date (YYYY-MM-DD)
           end_date: End date (YYYY-MM-DD)
 
@@ -69,7 +69,7 @@ class RMSDataExtractor:
       JOIN orders_orderitem oi ON o.id = oi.order_id
       JOIN menus_menuitem mi ON oi.menu_item_id = mi.id
       JOIN menus_menucategory mc ON mi.category_id = mc.id
-      WHERE o.restaurant_id = :restaurant_id
+      WHERE o.restaurant_id = CAST(:restaurant_id AS UUID)
         AND o.status IN ('completed', 'paid')
         AND o.created_at >= :start_date
         AND o.created_at < :end_date
@@ -81,7 +81,7 @@ class RMSDataExtractor:
               text(query),
               self.engine,
               params={
-                  'restaurant_id': restauranr_id,
+                  'restaurant_id': str(restaurant_id),
                   'start_date': start_date,
                   'end_date': end_date
               }
@@ -94,7 +94,7 @@ class RMSDataExtractor:
 
     def extract_kitchen_performance(
         self,
-        restaurant_id: int,
+        restaurant_id: str,
         start_date: str,
         end_date: str
     ) -> pd.DataFrame:
@@ -102,7 +102,7 @@ class RMSDataExtractor:
         Extract kitchen timing data for prep time prediction.
 
         Args:
-            restaurant_id: Restaurant identifier
+            restaurant_id: Restaurant UUID
             start_date: Start date (YYYY-MM-DD)
             end_date: End date (YYYY-MM-DD)
 
@@ -129,7 +129,7 @@ class RMSDataExtractor:
         JOIN kitchen_kitchenstation ks ON ois.station_id = ks.id
         JOIN orders_orderitem oi ON ois.order_item_id = oi.id
         JOIN menus_menuitem mi ON oi.menu_item_id = mi.id
-        WHERE ks.restaurant_id = :restaurant_id
+        WHERE ks.restaurant_id = CAST(:restaurant_id AS UUID)
           AND ois.status = 'completed'
           AND ois.completed_at IS NOT NULL
           AND ois.assigned_at >= :start_date
@@ -142,7 +142,7 @@ class RMSDataExtractor:
                 text(query),
                 self.engine,
                 params={
-                    'restaurant_id': restaurant_id,
+                    'restaurant_id': str(restaurant_id),
                     'start_date': start_date,
                     'end_date': end_date
                 }
@@ -155,13 +155,13 @@ class RMSDataExtractor:
 
     def extract_customer_data(
         self,
-        restaurant_id: int
+        restaurant_id: str
     ) -> pd.DataFrame:
         """
         Extract customer profiles and behavior data.
 
         Args:
-            restaurant_id: Restaurant identifier
+            restaurant_id: Restaurant UUID
 
         Returns:
             DataFrame with customer data
@@ -172,28 +172,28 @@ class RMSDataExtractor:
             cp.restaurant_id,
             cp.created_at as customer_since,
             EXTRACT(EPOCH FROM (NOW() - cp.created_at))/86400 as days_since_signup,
-            COALESCE(lb.current_points, 0) as current_points,
+            COALESCE(lb.points_balance, 0) as current_points,
             COALESCE(lb.lifetime_points, 0) as lifetime_points,
             COALESCE(lb.current_tier, 'bronze') as current_tier,
             COUNT(DISTINCT o.id) as total_orders,
             COALESCE(SUM(o.grand_total), 0) as total_spent,
             COALESCE(AVG(o.grand_total), 0) as avg_order_value,
             MAX(o.created_at) as last_order_date,
-            EXTRACT(EPOCH FROM (NOW() - MAX(o.created_at)))/86400 as days_since_last_order,
+            COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(o.created_at)))/86400, 0) as days_since_last_order,
             COUNT(DISTINCT DATE(o.created_at)) as unique_order_days
         FROM crm_customerprofile cp
         LEFT JOIN crm_loyaltybalance lb ON cp.id = lb.customer_id
         LEFT JOIN orders_order o ON cp.id = o.customer_id 
             AND o.status IN ('completed', 'paid')
-        WHERE cp.restaurant_id = :restaurant_id
-        GROUP BY cp.id, lb.current_points, lb.lifetime_points, lb.current_tier;
+        WHERE cp.restaurant_id = CAST(:restaurant_id AS UUID)
+        GROUP BY cp.id, lb.points_balance, lb.lifetime_points, lb.current_tier;
         """
         try:
             df = pd.read_sql(
                 text(query),
                 self.engine,
                 params={
-                    'restaurant_id': restaurant_id
+                    'restaurant_id': str(restaurant_id)
                 }
             )
             self.logger.info(f"Extracted {len(df)} customer records")
@@ -204,13 +204,13 @@ class RMSDataExtractor:
         
     def extract_inventory_data(
         self,
-        restaurant_id: int
+        restaurant_id: str
     ) -> pd.DataFrame:
         """
         Extract inventory levels and consumption data.
 
         Args:
-            restaurant_id: Restaurant identifier
+            restaurant_id: Restaurant UUID
 
         Returns:
             DataFrame with inventory data
@@ -220,7 +220,7 @@ class RMSDataExtractor:
             ii.id as item_id,
             ii.restaurant_id,
             ii.name as item_name,
-            COALESCE(ic.name, 'Uncategorized') as category_name,
+            'General' as category_name,
             ii.min_level,
             ii.reorder_level,
             COALESCE(SUM(b.remaining_base), 0) as current_stock,
@@ -232,16 +232,15 @@ class RMSDataExtractor:
                  FROM inventory_stockmovement sm
                  WHERE sm.item_id = ii.id
                    AND sm.movement_type = 'recipe_deduct'
-                   AND sm.created_at >= NOW() - INTERVAL '30 days'),
+                   AND sm.occurred_at >= NOW() - INTERVAL '30 days'),
                 0
             ) as consumption_last_30_days
         FROM inventory_inventoryitem ii
-        LEFT JOIN inventory_category ic ON ii.category_id = ic.id
         LEFT JOIN inventory_batch b ON ii.id = b.item_id 
             AND b.remaining_base > 0
-        WHERE ii.restaurant_id = :restaurant_id
+        WHERE ii.restaurant_id = CAST(:restaurant_id AS UUID)
           AND ii.is_active = TRUE
-        GROUP BY ii.id, ic.name;
+        GROUP BY ii.id;
         """
 
         try:
@@ -249,7 +248,7 @@ class RMSDataExtractor:
                 text(query),
                 self.engine,
                 params={
-                    'restaurant_id': restaurant_id
+                    'restaurant_id': str(restaurant_id)
                 }
             )
             self.logger.info(f"Extracted {len(df)} inventory records")
@@ -260,7 +259,7 @@ class RMSDataExtractor:
 
     def extract_payment_data(
         self,
-        restaurant_id: int,
+        restaurant_id: str,
         start_date: str,
         end_date: str
     ) -> pd.DataFrame:
@@ -268,7 +267,7 @@ class RMSDataExtractor:
         Extract payment data for analysis.
 
         Args:
-            restaurant_id: Restaurant identifier
+            restaurant_id: Restaurant UUID
             start_date: Start date (YYYY-MM-DD)
             end_date: End date (YYYY-MM-DD)
 
@@ -289,7 +288,7 @@ class RMSDataExtractor:
             EXTRACT(HOUR FROM p.created_at) as hour_of_day,
             EXTRACT(DOW FROM p.created_at) as day_of_week
         FROM payments_payment p
-        WHERE p.restaurant_id = :restaurant_id
+        WHERE p.restaurant_id = CAST(:restaurant_id AS UUID)
           AND p.created_at >= :start_date
           AND p.created_at < :end_date
         ORDER BY p.created_at;
@@ -300,7 +299,7 @@ class RMSDataExtractor:
                 text(query),
                 self.engine,
                 params={
-                    'restaurant_id': restaurant_id,
+                    'restaurant_id': str(restaurant_id),
                     'start_date': start_date,
                     'end_date': end_date
                 }
@@ -314,3 +313,57 @@ class RMSDataExtractor:
     def close(self):
         """Close database connection."""
         self.engine.dispose()
+
+    def extract_stock_movement_history(
+        self,
+        restaurant_id: str,
+        days_back: int = 90
+    ) -> pd.DataFrame:
+        """
+        Extract stock movement history for inventory optimization.
+
+        Args:
+            restaurant_id: Restaurant UUID
+            days_back: Days of historical data to use
+
+        Returns:
+            DataFrame with stock movement history
+        """
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days_back)
+        
+        query = """
+        SELECT
+            sm.id,
+            sm.item_id,
+            ii.name as item_name,
+            sm.movement_type,
+            sm.qty_base,
+            sm.occurred_at,
+            EXTRACT(DOW FROM sm.occurred_at) as day_of_week,
+            EXTRACT(HOUR FROM sm.occurred_at) as hour_of_day,
+            DATE(sm.occurred_at) as movement_date
+        FROM inventory_stockmovement sm
+        JOIN inventory_inventoryitem ii ON sm.item_id = ii.id
+        WHERE sm.restaurant_id = CAST(:restaurant_id AS UUID)
+          AND sm.occurred_at >= :start_date
+          AND sm.occurred_at < :end_date
+          AND sm.movement_type = 'recipe_deduct'
+        ORDER BY sm.occurred_at;
+        """
+
+        try:
+            df = pd.read_sql(
+                text(query),
+                self.engine,
+                params={
+                    'restaurant_id': str(restaurant_id),
+                    'start_date': start_date.strftime('%Y-%m-%d'),
+                    'end_date': end_date.strftime('%Y-%m-%d')
+                }
+            )
+            self.logger.info(f"Extracted {len(df)} stock movement records")
+            return df
+        except Exception as e:
+            self.logger.error(f"Error extracting stock movement history: {e}")
+            raise

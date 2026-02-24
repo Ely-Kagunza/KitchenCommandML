@@ -67,7 +67,7 @@ class DemandForecastModel:
     def train(
         self,
         X_train: pd.DataFrame,
-        y_train: pd.ndarray,
+        y_train: np.ndarray,
         dates_train: pd.Series
     ) -> Dict:
         """
@@ -94,13 +94,18 @@ class DemandForecastModel:
         X_scaled = self.scaler.fit_transform(X_train)
         self.xgb_model.fit(X_scaled, y_train)
 
-        # Train Prophet
+        # Train Prophet (with fallback if it fails)
         self.logger.info("Training Prophet component...")
-        prophet_df = pd.DataFrame({
-            'ds': dates_train,
-            'y': y_train
-        })
-        self.prophet_model.fit(prophet_df)
+        try:
+            prophet_df = pd.DataFrame({
+                'ds': dates_train,
+                'y': y_train
+            })
+            self.prophet_model.fit(prophet_df)
+            self.logger.info("Prophet training successful")
+        except Exception as e:
+            self.logger.warning(f"Prophet training failed: {e}. Using XGBoost-only model.")
+            self.prophet_model = None
 
         self.is_trained = True
         self.logger.info("Demand forecast model training complete!")
@@ -129,16 +134,21 @@ class DemandForecastModel:
         X_scaled = self.scaler.transform(X_test)
         xgb_pred = self.xgb_model.predict(X_scaled)
 
-        # Prophet predictions
-        prophet_df = pd.DataFrame({'ds': dates_test})
-        prophet_forecast = self.prophet_model.predict(prophet_df)
-        prophet_pred = prophet_forecast['yhat'].values
+        # If Prophet is available, use ensemble; otherwise use XGBoost only
+        if self.prophet_model is not None:
+            # Prophet predictions
+            prophet_df = pd.DataFrame({'ds': dates_test})
+            prophet_forecast = self.prophet_model.predict(prophet_df)
+            prophet_pred = prophet_forecast['yhat'].values
 
-        # Ensemble: weighted average
-        ensemble_pred = (
-            self.ensemble_weight * xgb_pred +
-            (1 - self.ensemble_weight) * prophet_pred
-        )
+            # Ensemble: weighted average
+            ensemble_pred = (
+                self.ensemble_weight * xgb_pred +
+                (1 - self.ensemble_weight) * prophet_pred
+            )
+        else:
+            # Use XGBoost only
+            ensemble_pred = xgb_pred
 
         # Ensure non-negative predictions
         ensemble_pred = np.maximum(ensemble_pred, 0)
@@ -162,20 +172,27 @@ class DemandForecastModel:
         """
         predictions = self.predict(X_test, dates_test)
 
-        # Calculate confidence intervals from Prophet
-        prophet_df = pd.DataFrame({'ds': dates_test})
-        prophet_forecast = self.prophet_model.predict(prophet_df)
+        if self.prophet_model is not None:
+            # Calculate confidence intervals from Prophet
+            prophet_df = pd.DataFrame({'ds': dates_test})
+            prophet_forecast = self.prophet_model.predict(prophet_df)
+            lower_bound = np.maximum(prophet_forecast['yhat_lower'].values, 0)
+            upper_bound = prophet_forecast['yhat_upper'].values
+        else:
+            # Use predictions +/- 20% as bounds
+            lower_bound = np.maximum(predictions * 0.8, 0)
+            upper_bound = predictions * 1.2
 
         return {
             'predictions': predictions,
-            'lower_bound': np.maximum(prophet_forecast['yhat_lower'].values, 0),
-            'upper_bound': prophet_forecast['yhat_upper'].values
+            'lower_bound': lower_bound,
+            'upper_bound': upper_bound
         }
 
     def evaluate(
         self,
         X_test: pd.DataFrame,
-        y_test: pd.ndarray,
+        y_test: np.ndarray,
         dates_test: pd.Series
     ) -> Dict:
         """

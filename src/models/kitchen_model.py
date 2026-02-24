@@ -48,7 +48,7 @@ class KitchenPerformanceModel:
     def train(
         self,
         X_train: pd.DataFrame,
-        y_train: pd.ndarray
+        y_train: np.ndarray
     ) -> Dict:
         """
         Train kitchen performance model.
@@ -122,7 +122,7 @@ class KitchenPerformanceModel:
     def evaluate(
         self,
         X_test: pd.DataFrame,
-        y_test: pd.ndarray
+        y_test: np.ndarray
     ) -> Dict:
         """
         Evaluate model performance.

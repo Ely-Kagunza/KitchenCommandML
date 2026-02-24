@@ -179,6 +179,117 @@ async def predict_item_demand(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/demand/category")
+async def predict_category_demand(
+    restaurant_id: Union[int, str],
+    category_name: str,
+    hours_ahead: int = 24
+):
+    """
+    Predict demand for a menu category.
+
+    Args:
+        restaurant_id: Restaurant ID
+        category_name: Menu category name
+        hours_ahead: Hours to forecast
+
+    Returns:
+        Category-level demand predictions
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('demand', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = DemandPredictionService(model_path)
+
+        end_date = datetime.now()
+        start_date = end_date - pd.Timedelta(days=180)
+
+        orders = get_data_extractor().extract_orders(
+            restaurant_id,
+            start_date.strftime('%Y-%m-%d'),
+            end_date.strftime('%Y-%m-%d')
+        )
+
+        predictions = service.predict_category_demand(orders, category_name, hours_ahead)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": predictions,
+            "metadata": {
+                "model_version": "1.0.0",
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error predicting category demand: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/demand/peak-hours")
+async def get_peak_hours(
+    restaurant_id: Union[int, str],
+    days_ahead: int = 7
+):
+    """
+    Get peak hours forecast for next N days.
+
+    Args:
+        restaurant_id: Restaurant ID
+        days_ahead: Days to forecast
+
+    Returns:
+        Peak hours analysis
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('demand', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = DemandPredictionService(model_path)
+
+        end_date = datetime.now()
+        start_date = end_date - pd.Timedelta(days=180)
+
+        orders = get_data_extractor().extract_orders(
+            restaurant_id,
+            start_date.strftime('%Y-%m-%d'),
+            end_date.strftime('%Y-%m-%d')
+        )
+
+        analysis = service.get_peak_hours(orders, days_ahead)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": analysis,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting peak hours: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/kitchen/prep-time")
 async def predict_prep_time(request: KitchenPredictionRequest):
     """
@@ -234,6 +345,62 @@ async def predict_prep_time(request: KitchenPredictionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/kitchen/batch-prep-time")
+async def predict_batch_prep_time(request: KitchenPredictionRequest):
+    """
+    Predict prep times for batch of orders.
+
+    Args:
+        request: Kitchen prediction request with orders list
+
+    Returns:
+        Batch prep time predictions
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(request.restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('kitchen', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = KitchenPredictionService(model_path)
+
+        end_date = datetime.now()
+        start_date = end_date - pd.Timedelta(days=90)
+
+        kitchen_data = get_data_extractor().extract_kitchen_performance(
+            restaurant_id,
+            start_date.strftime('%Y-%m-%d'),
+            end_date.strftime('%Y-%m-%d')
+        )
+
+        # Assuming request has orders list
+        orders = getattr(request, 'orders', [])
+        if not orders:
+            raise HTTPException(status_code=400, detail="Orders list required")
+
+        prediction = service.predict_batch_prep_time(orders, kitchen_data)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": prediction,
+            "metadata": {
+                "model_version": "1.0.0",
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error predicting batch prep time: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/kitchen/bottlenecks")
 async def identify_bottlenecks(restaurant_id: Union[int, str]):
     """
@@ -281,6 +448,56 @@ async def identify_bottlenecks(restaurant_id: Union[int, str]):
 
     except Exception as e:
         logger.error(f"Error identifying bottlenecks: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/kitchen/station-performance")
+async def get_station_performance(restaurant_id: Union[int, str]):
+    """
+    Get kitchen station performance metrics.
+
+    Args:
+        restaurant_id: Restaurant ID
+
+    Returns:
+        Station performance analysis
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('kitchen', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = KitchenPredictionService(model_path)
+
+        end_date = datetime.now()
+        start_date = end_date - pd.Timedelta(days=30)
+
+        kitchen_data = get_data_extractor().extract_kitchen_performance(
+            restaurant_id,
+            start_date.strftime('%Y-%m-%d'),
+            end_date.strftime('%Y-%m-%d')
+        )
+
+        analysis = service.get_station_performance(kitchen_data)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": analysis,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting station performance: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -383,7 +600,51 @@ async def predict_ltv(request: CustomerAnalyticsRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("customer/at-risk")
+@router.post("/customer/batch-analytics")
+async def predict_batch_analytics(restaurant_id: Union[int, str]):
+    """
+    Get analytics for all customers.
+
+    Args:
+        restaurant_id: Restaurant ID
+
+    Returns:
+        Batch customer analytics
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        churn_path = get_model_loader().get_latest_model_path('churn', restaurant_id)
+        ltv_path = get_model_loader().get_latest_model_path('ltv', restaurant_id)
+
+        if not churn_path or not ltv_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = CustomerPredictionService(churn_path, ltv_path)
+
+        customers = get_data_extractor().extract_customer_data(restaurant_id)
+        analysis = service.predict_batch_analytics(customers)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": analysis,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting batch analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/customer/at-risk")
 async def get_at_risk_customers(restaurant_id: Union[int, str], threshold: float = 0.6):
     """
     Get customers at risk of churn.
@@ -425,6 +686,51 @@ async def get_at_risk_customers(restaurant_id: Union[int, str], threshold: float
 
     except Exception as e:
         logger.error(f"Error getting at risk customers: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/customer/high-value")
+async def get_high_value_customers(restaurant_id: Union[int, str], ltv_percentile: float = 75):
+    """
+    Get high-value customers.
+
+    Args:
+        restaurant_id: Restaurant ID
+        ltv_percentile: LTV percentile threshold
+
+    Returns:
+        List of high-value customers
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        churn_path = get_model_loader().get_latest_model_path('churn', restaurant_id)
+        ltv_path = get_model_loader().get_latest_model_path('ltv', restaurant_id)
+
+        if not churn_path or not ltv_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = CustomerPredictionService(churn_path, ltv_path)
+
+        customers = get_data_extractor().extract_customer_data(restaurant_id)
+        analysis = service.get_high_value_customers(customers, ltv_percentile)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": analysis,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting high value customers: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -483,6 +789,90 @@ async def get_inventory_recommendations(request: InventoryOptimizationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/inventory/batch-recommendations")
+async def get_batch_inventory_recommendations(restaurant_id: Union[int, str]):
+    """
+    Get inventory recommendations for all items.
+
+    Args:
+        restaurant_id: Restaurant ID
+
+    Returns:
+        Batch inventory recommendations
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('inventory', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = InventoryPredictionService(model_path)
+
+        inventory = get_data_extractor().extract_inventory_data(restaurant_id)
+        recommendations = service.get_batch_recommendations(inventory)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": recommendations,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting batch recommendations: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/inventory/reorder-summary")
+async def get_reorder_summary(restaurant_id: Union[int, str]):
+    """
+    Get summary of items needing reorder.
+
+    Args:
+        restaurant_id: Restaurant ID
+
+    Returns:
+        Reorder summary
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('inventory', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = InventoryPredictionService(model_path)
+
+        inventory = get_data_extractor().extract_inventory_data(restaurant_id)
+        summary = service.get_reorder_summary(inventory)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": summary,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting reorder summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/inventory/status")
 async def get_inventory_status(restaurant_id: Union[int, str]):
     """
@@ -522,4 +912,145 @@ async def get_inventory_status(restaurant_id: Union[int, str]):
 
     except Exception as e:
         logger.error(f"Error getting inventory status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/inventory/optimize")
+async def optimize_inventory(restaurant_id: Union[int, str], item_id: int):
+    """
+    Get comprehensive inventory optimization for item.
+
+    Args:
+        restaurant_id: Restaurant ID
+        item_id: Item ID
+
+    Returns:
+        Inventory optimization results
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('inventory', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = InventoryPredictionService(model_path)
+
+        inventory = get_data_extractor().extract_inventory_data(restaurant_id)
+        item = inventory[inventory['item_id'] == item_id]
+
+        if len(item) == 0:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        item_row = item.iloc[0]
+        optimization = service.optimize_inventory(
+            item_id,
+            item_row['current_stock'],
+            item_row['daily_consumption_rate'],
+            lead_time_days=3,  # Default lead time
+            order_cost=50,  # Default order cost
+            holding_cost=0.5,  # Default holding cost
+            min_level=item_row['min_level']
+        )
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": optimization,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error optimizing inventory: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/inventory/waste-insights")
+async def get_waste_reduction_insights(restaurant_id: Union[int, str]):
+    """
+    Get waste reduction insights.
+
+    Args:
+        restaurant_id: Restaurant ID
+
+    Returns:
+        Waste reduction insights
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('inventory', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = InventoryPredictionService(model_path)
+
+        inventory = get_data_extractor().extract_inventory_data(restaurant_id)
+        insights = service.get_waste_reduction_insights(inventory)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": insights,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting waste insights: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/inventory/cost-analysis")
+async def get_cost_analysis(restaurant_id: Union[int, str]):
+    """
+    Get inventory cost analysis.
+
+    Args:
+        restaurant_id: Restaurant ID
+
+    Returns:
+        Cost analysis report
+    """
+    start_time = time.time()
+    
+    # Normalize restaurant_id
+    restaurant_id = normalize_restaurant_id(restaurant_id)
+
+    try:
+        model_path = get_model_loader().get_latest_model_path('inventory', restaurant_id)
+        if not model_path:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        service = InventoryPredictionService(model_path)
+
+        inventory = get_data_extractor().extract_inventory_data(restaurant_id)
+        analysis = service.get_cost_analysis(inventory, order_cost=50)
+
+        duration = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "data": analysis,
+            "metadata": {
+                "prediction_time_ms": round(duration, 2),
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting cost analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

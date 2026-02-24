@@ -37,7 +37,7 @@ class ModelTrainingPipeline:
         self,
         db_url: str,
         model_dir: str = 'models',
-        restaurant_id: int = 1
+        restaurant_id: str = '1'
     ):
         """
         Initialize training pipeline.
@@ -104,7 +104,23 @@ class ModelTrainingPipeline:
             y_list = []
             dates_list = []
 
-            for date in pd.date_range(start=orders['created_at'].min(), end=orders['created_at'].max(), freq='H'):
+            # Ensure created_at is timezone-naive (should already be from process_orders)
+            if orders['created_at'].dt.tz is not None:
+                orders['created_at'] = orders['created_at'].dt.tz_convert('UTC').dt.tz_localize(None)
+            
+            # Get min/max dates
+            min_date = orders['created_at'].min()
+            max_date = orders['created_at'].max()
+            
+            # Create date range with timezone-naive timestamps
+            date_range = pd.date_range(
+                start=min_date, 
+                end=max_date, 
+                freq='1h',
+                tz=None
+            )
+            
+            for date in date_range:
                 features = self.feature_engineer.create_demand_features(orders, date)
                 hourly_orders = len(orders[
                     (orders['created_at'] >= date) &
@@ -117,6 +133,7 @@ class ModelTrainingPipeline:
 
             X = pd.DataFrame(X_list)
             y = np.array(y_list)
+            # Ensure dates are timezone-naive for Prophet
             dates = pd.Series(dates_list)
 
             # Split data
@@ -393,17 +410,20 @@ class ModelTrainingPipeline:
         self.logger.info(f"Starting inventory model training...")
 
         try:
-            # Extract data
-            self.logger.info(f"Extracting inventory data...")
-            raw_inventory = self.data_extractor.extract_inventory_data(self.restaurant_id)
+            # Extract stock movement history (not just current inventory items)
+            self.logger.info(f"Extracting stock movement history...")
+            raw_movements = self.data_extractor.extract_stock_movement_history(
+                self.restaurant_id,
+                days_back=days_back
+            )
 
             # Validate
-            validation = self.data_validator.validate_inventory_data(raw_inventory)
+            validation = self.data_validator.validate_inventory_data(raw_movements)
             if not validation['valid']:
                 raise ValueError(f"Data validation failed: {validation['issues']}")
 
             # Process
-            inventory = self.data_processor.process_inventory_data(raw_inventory)
+            inventory = self.data_processor.process_inventory_data(raw_movements)
 
             # Train model
             self.logger.info(f"Training inventory model...")
@@ -497,18 +517,22 @@ class ModelTrainingPipeline:
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=2)
 
-        # Update latest symlink
-        latest_link = os.path.join(
+        # Update latest version pointer (use JSON file instead of symlink for Windows compatibility)
+        latest_pointer_file = os.path.join(
             self.model_dir,
             model_type,
             f'restaurant_{self.restaurant_id}',
-            'latest'
+            'latest.json'
         )
 
-        if os.path.exists(latest_link):
-            os.remove(latest_link)
+        latest_pointer = {
+            'latest_version': version,
+            'latest_path': model_path,
+            'updated_at': datetime.now().isoformat()
+        }
 
-        os.symlink(model_path, latest_link)
+        with open(latest_pointer_file, 'w') as f:
+            json.dump(latest_pointer, f, indent=2)
 
         self.logger.info(f"Model saved to {model_path}. Latest version: {version}")
 

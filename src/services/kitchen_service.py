@@ -79,7 +79,7 @@ class KitchenPredictionService:
         return {
             'station_id': station_id,
             'menu_item_id': menu_item_id,
-            'predicted_prep_time_minutes': round(pred_result['prediction'][0], 1),
+            'predicted_prep_time_minutes': round(pred_result['predictions'][0], 1),
             'lower_bound_minutes': round(pred_result['lower_bound'][0], 1),
             'upper_bound_minutes': round(pred_result['upper_bound'][0], 1),
             'confidence': 0.85
@@ -150,26 +150,25 @@ class KitchenPredictionService:
             )
 
             # Items above threshold
-            slow_items = station_data[
+            slow_items_data = station_data[
                 station_data['prep_time_minutes'] > threshold
-            ].groupby('menu_item_id').agg({
-                'prep_time_minutes': ['mean', 'count']
-            }).reset_index()
+            ].groupby('menu_item_id')['prep_time_minutes'].agg(['mean', 'count']).reset_index()
 
-            if len(slow_items) > 0:
+            if len(slow_items_data) > 0:
+                slow_items_list = []
+                for _, row in slow_items_data.iterrows():
+                    slow_items_list.append({
+                        'menu_item_id': int(row['menu_item_id']),
+                        'avg_prep_time': round(row['mean'], 1),
+                        'occurences': int(row['count'])
+                    })
+                
                 bottlenecks.append({
-                    'station_id': int(station_id),
+                    'station_id': str(station_id),
                     'station_name': station_data['station_name'].iloc[0],
                     'avg_prep_time': round(avg_prep_time, 1),
                     'bottleneck_threshold': round(threshold, 1),
-                    'slow_items': [
-                        {
-                            'menu_item_id': int(row[1][0]),
-                            'avg_prep_time': round(row[1][1][0], 1),
-                            'occurences': int(row[1][1][1])
-                        }
-                        for row in slow_items.iterrows()
-                    ]
+                    'slow_items': slow_items_list
                 })
 
         return {
@@ -199,7 +198,7 @@ class KitchenPredictionService:
             ]
 
             metrics = {
-                'station_id': int(station_id),
+                'station_id': str(station_id),
                 'station_name': station_data['station_name'].iloc[0],
                 'total_items_prepared': len(station_data),
                 'avg_prep_time_minutes': round(station_data['prep_time_minutes'].mean(), 1),

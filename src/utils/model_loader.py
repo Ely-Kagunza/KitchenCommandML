@@ -31,14 +31,14 @@ class ModelLoader:
     def get_latest_model_path(
         self,
         model_type: str,
-        restaurant_id: int
+        restaurant_id: str
     ) -> Optional[str]:
         """
         Get path to latest model version.
 
         Args:
             model_type: Model type (demand, kitchen, churn, ltv, inventory)
-            restaurant_id: Restaurant ID
+            restaurant_id: Restaurant ID (UUID or string)
 
         Returns:
             Path to latest model or None if not found
@@ -49,8 +49,21 @@ class ModelLoader:
             f"restaurant_{restaurant_id}"
         )
 
-        latest_link = os.path.join(model_dir, "latest")
+        # Try to read from latest.json pointer file (Windows compatible)
+        latest_pointer_file = os.path.join(model_dir, "latest.json")
+        
+        if os.path.exists(latest_pointer_file):
+            try:
+                with open(latest_pointer_file, "r") as f:
+                    pointer = json.load(f)
+                    latest_path = pointer.get("latest_path")
+                    if latest_path and os.path.exists(latest_path):
+                        return latest_path
+            except Exception as e:
+                self.logger.warning(f"Error reading latest.json: {e}")
 
+        # Fallback: try symlink (for Linux/Mac)
+        latest_link = os.path.join(model_dir, "latest")
         if os.path.exists(latest_link):
             return latest_link
 
@@ -59,7 +72,7 @@ class ModelLoader:
     def load_model(
         self,
         model_type: str,
-        restaurant_id: int
+        restaurant_id: str
     ):
         """
         Load model from disk
@@ -89,7 +102,7 @@ class ModelLoader:
     def get_model_metadata(
         self,
         model_type: str,
-        restaurant_id: int
+        restaurant_id: str
     ) -> Optional[Dict]:
         """
         Get model metadata.
@@ -118,7 +131,7 @@ class ModelLoader:
     def list_model_versions(
         self,
         model_type: str,
-        restaurant_id: int
+        restaurant_id: str
     ) -> list:
         """
         List all versions of a model.
@@ -149,7 +162,7 @@ class ModelLoader:
     def get_model_info(
         self,
         model_type: str,
-        restaurant_id: int
+        restaurant_id: str
     ) -> Dict:
         """
         Get comprehensive model information.

@@ -309,9 +309,20 @@ class FeatureEngineer:
         Returns:
             Number od orders at that time
         """
-        hour_df = df[
-            (df['created_at'] >= target_time) &
-            (df['created_at'] < target_time + timedelta(hours=1))
+        # Make a copy to avoid modifying original
+        df_copy = df.copy()
+        
+        # Ensure created_at is timezone-naive
+        if df_copy['created_at'].dt.tz is not None:
+            df_copy['created_at'] = df_copy['created_at'].dt.tz_localize(None)
+        
+        # Ensure target_time is timezone-naive
+        if hasattr(target_time, 'tz') and target_time.tz is not None:
+            target_time = target_time.tz_localize(None)
+        
+        hour_df = df_copy[
+            (df_copy['created_at'] >= target_time) &
+            (df_copy['created_at'] < target_time + timedelta(hours=1))
         ]
         return len(hour_df)
 
@@ -332,10 +343,22 @@ class FeatureEngineer:
         Returns:
             Average orders per hour over period
         """
+        # Make a copy to avoid modifying original
+        df_copy = df.copy()
+        
+        # Ensure created_at is timezone-naive
+        if df_copy['created_at'].dt.tz is not None:
+            df_copy['created_at'] = df_copy['created_at'].dt.tz_localize(None)
+        
+        # Ensure target_time is timezone-naive
+        if hasattr(target_time, 'tz') and target_time.tz is not None:
+            target_time = target_time.tz_localize(None)
+        
         start_time = target_time - timedelta(days=days)
-        period_df = df[
-            (df['created_at'] >= start_time) &
-            (df['created_at'] < target_time)
+        
+        period_df = df_copy[
+            (df_copy['created_at'] >= start_time) &
+            (df_copy['created_at'] < target_time)
         ]
 
         if len(period_df) == 0:
@@ -343,7 +366,7 @@ class FeatureEngineer:
 
         # Group by hour and calculate average
         hourly_counts = period_df.groupby(
-            period_df['created_at'].dt.floor('H')
+            period_df['created_at'].dt.floor('h')
         ).size()
 
         return float(hourly_counts.mean()) if len(hourly_counts) > 0 else 0.0

@@ -59,7 +59,7 @@ class CustomerChurnModel:
     def train(
         self,
         X_train: pd.DataFrame,
-        y_train: pd.ndarray,
+        y_train: np.ndarray,
         categorical_features: list = None
     ) -> Dict:
         """
@@ -165,7 +165,7 @@ class CustomerChurnModel:
     def evaluate(
         self,
         X_test: pd.DataFrame,
-        y_test: pd.ndarray
+        y_test: np.ndarray
     ) -> Dict:
         """
         Evaluate model performance.
