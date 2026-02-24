@@ -1,0 +1,13 @@
+{
+  "model_type": "demand",
+  "restaurant_id": "a33877ad-36ac-420a-96d0-6f518e5af21b",
+  "version": "20260224_163057",
+  "trained_at": "2026-02-24T16:30:57.347739",
+  "metrics": {
+    "mae": 1.77,
+    "rmse": 2.2,
+    "r2": -1.685,
+    "mape": 160.67,
+    "within_5_orders": 96.79
+  }
+}

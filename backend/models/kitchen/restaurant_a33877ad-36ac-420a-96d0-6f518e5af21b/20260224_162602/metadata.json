@@ -1,0 +1,12 @@
+{
+  "model_type": "kitchen",
+  "restaurant_id": "a33877ad-36ac-420a-96d0-6f518e5af21b",
+  "version": "20260224_162602",
+  "trained_at": "2026-02-24T16:26:02.917202",
+  "metrics": {
+    "mae": 0.6,
+    "rmse": 0.84,
+    "r2": -28.3619,
+    "within_5_minutes": 100.0
+  }
+}
