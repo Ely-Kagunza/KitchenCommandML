@@ -77,44 +77,49 @@ export const CategoryDemand: React.FC<CategoryDemandProps> = ({
 
   return (
     <div
-      className="w-full rounded-xl shadow-md border p-6"
+      className="w-full rounded-xl shadow-md border p-6 mb-8" /* add bottom margin so adjacent cards have space */
       style={{
         backgroundColor: currentTheme.colors.surface,
         borderColor: currentTheme.colors.border,
       }}
     >
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center">
           <div
-            className="h-10 w-10 rounded-lg flex items-center justify-center mr-3"
-            style={{ backgroundColor: `${currentTheme.colors.primary}20` }}
+            className="h-14 w-14 rounded-xl flex items-center justify-center mr-4"
+            style={{ backgroundColor: `${currentTheme.colors.secondary}20` }}
           >
-            <span className="text-xl">📂</span>
+            <span className="text-2xl">📂</span>
           </div>
           <div>
-            <h2 className="text-2xl font-bold" style={{ color: currentTheme.colors.text }}>
+            <h2 className="text-xl font-semibold" style={{ color: currentTheme.colors.text }}>
               {categoryName}
             </h2>
-            <p className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+            <p className="text-sm mt-0.5" style={{ color: currentTheme.colors.textSecondary }}>
               Category demand forecast
             </p>
           </div>
         </div>
 
-        {/* Hours Selector */}
+        {/* Hours Selector - Horizontal */}
         <div className="flex gap-2">
           {[12, 24, 48].map((hours) => (
             <button
               key={hours}
               onClick={() => setSelectedHours(hours)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer hover:shadow-md ${
-                selectedHours === hours ? 'text-white' : 'text-gray-600 bg-gray-100'
-              }`}
+              className="px-5 py-2.5 rounded-lg font-medium transition-all cursor-pointer hover:shadow-md"
               style={
                 selectedHours === hours
-                  ? { backgroundColor: currentTheme.colors.primary }
-                  : {}
+                  ? {
+                      backgroundColor: currentTheme.colors.primary,
+                      color: currentTheme.colors.textInverse,
+                    }
+                  : {
+                      backgroundColor: currentTheme.colors.backgroundSecondary,
+                      color: currentTheme.colors.textSecondary,
+                      border: `1px solid ${currentTheme.colors.border}`,
+                    }
               }
             >
               {hours}h
@@ -123,44 +128,80 @@ export const CategoryDemand: React.FC<CategoryDemandProps> = ({
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer" style={{ backgroundColor: currentTheme.colors.primaryLight }}>
-          <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+      {/* Stats Grid - Horizontal Rectangular Containers */}
+      <div className="grid grid-cols-4 gap-8 mb-8"> /* larger gap and more bottom space */
+        <div
+          className="rounded-lg p-6 border flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow"
+          style={{
+            backgroundColor: currentTheme.colors.backgroundSecondary,
+            borderColor: currentTheme.colors.border,
+          }}
+        >
+          <p
+            className="text-xs uppercase tracking-wide font-semibold mb-3"
+            style={{ color: currentTheme.colors.textSecondary }}
+          >
             Total Orders
           </p>
-          <p className="text-2xl font-bold mt-1" style={{ color: currentTheme.colors.primary }}>
+          <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
             {totalOrders}
           </p>
         </div>
-        <div className="rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer" style={{ backgroundColor: currentTheme.colors.successLight }}>
-          <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+        <div
+          className="rounded-lg p-6 border flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow"
+          style={{
+            backgroundColor: currentTheme.colors.backgroundSecondary,
+            borderColor: currentTheme.colors.border,
+          }}
+        >
+          <p
+            className="text-xs uppercase tracking-wide font-semibold mb-3"
+            style={{ color: currentTheme.colors.textSecondary }}
+          >
             Average
           </p>
-          <p className="text-2xl font-bold mt-1" style={{ color: currentTheme.colors.success }}>
+          <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
             {avgOrders}
           </p>
         </div>
-        <div className="rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer" style={{ backgroundColor: currentTheme.colors.accentLight }}>
-          <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+        <div
+          className="rounded-lg p-6 border flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow"
+          style={{
+            backgroundColor: currentTheme.colors.backgroundSecondary,
+            borderColor: currentTheme.colors.border,
+          }}
+        >
+          <p
+            className="text-xs uppercase tracking-wide font-semibold mb-3"
+            style={{ color: currentTheme.colors.textSecondary }}
+          >
             Peak
           </p>
-          <p className="text-2xl font-bold mt-1" style={{ color: currentTheme.colors.accent }}>
+          <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
             {maxOrders}
           </p>
         </div>
-        <div className="rounded-lg p-4 hover:shadow-lg transition-all cursor-pointer" style={{ backgroundColor: currentTheme.colors.infoLight }}>
-          <p className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+        <div
+          className="rounded-lg p-6 border flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow"
+          style={{
+            backgroundColor: currentTheme.colors.backgroundSecondary,
+            borderColor: currentTheme.colors.border,
+          }}
+        >
+          <p
+            className="text-xs uppercase tracking-wide font-semibold mb-3"
+            style={{ color: currentTheme.colors.textSecondary }}
+          >
             Minimum
           </p>
-          <p className="text-2xl font-bold mt-1" style={{ color: currentTheme.colors.info }}>
+          <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
             {minOrders}
           </p>
         </div>
       </div>
 
       {/* Chart */}
-      <div className="w-full h-80 mb-6">
+      <div className="w-full mb-8" style={{ height: '320px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={predictions}>
             <defs>

@@ -74,7 +74,7 @@ export const demandService = {
         daysAhead: number = 7
     ): Promise<PeakHoursResponse> => {
         try {
-            return await apiClient.post(
+            return await apiClient.get(
                 `/demand/peak-hours?restaurant_id=${restaurantId}&days_ahead=${daysAhead}`
             )
         } catch (error) {

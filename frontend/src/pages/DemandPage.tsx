@@ -120,12 +120,7 @@ export const DemandPage: React.FC<DemandPageProps> = ({ restaurantId }) => {
           <div>
             {/* Overview Tab */}
             {activeTab === 'overview' && (
-              <div
-                className="rounded-xl shadow-md p-6"
-                style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}
-              >
-                <DemandForecast restaurantId={restaurantId} />
-              </div>
+              <DemandForecast restaurantId={restaurantId} />
             )}
 
             {/* Items Tab */}
@@ -169,16 +164,11 @@ export const DemandPage: React.FC<DemandPageProps> = ({ restaurantId }) => {
                 </div>
 
                 {/* Item Demand Chart */}
-                <div
-                  className="rounded-xl shadow-md p-6"
-                  style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}
-                >
-                  <ItemDemand
-                    restaurantId={restaurantId}
-                    itemId={selectedItemId}
-                    itemName={menuItems.find((i) => i.id === selectedItemId)?.name}
-                  />
-                </div>
+                <ItemDemand
+                  restaurantId={restaurantId}
+                  itemId={selectedItemId}
+                  itemName={menuItems.find((i) => i.id === selectedItemId)?.name}
+                />
               </div>
             )}
 
@@ -223,27 +213,17 @@ export const DemandPage: React.FC<DemandPageProps> = ({ restaurantId }) => {
                 </div>
 
                 {/* Category Demand Chart */}
-                <div
-                  className="rounded-xl shadow-md p-6"
-                  style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}
-                >
-                  <CategoryDemand
-                    restaurantId={restaurantId}
-                    categoryName={selectedCategory}
-                    hoursAhead={24}
-                  />
-                </div>
+                <CategoryDemand
+                  restaurantId={restaurantId}
+                  categoryName={selectedCategory}
+                  hoursAhead={24}
+                />
               </div>
             )}
 
             {/* Peak Hours Tab */}
             {activeTab === 'peaks' && (
-              <div
-                className="rounded-xl shadow-md p-6"
-                style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }}
-              >
-                <PeakHours restaurantId={restaurantId} daysAhead={7} />
-              </div>
+              <PeakHours restaurantId={restaurantId} daysAhead={7} />
             )}
           </div>
         </div>

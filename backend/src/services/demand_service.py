@@ -295,8 +295,9 @@ class DemandPredictionService:
                 hourly_predictions.append(max(int(pred), 0))
 
             # Find peak hours (top 3)
-            hourly_predictions.sort(key=lambda x: x[1], reverse=True)
-            peak_hours = hourly_predictions[:3]
+            hourly_with_hours = [(hour, pred) for hour, pred in enumerate(hourly_predictions)]
+            hourly_with_hours.sort(key=lambda x: x[1], reverse=True)
+            peak_hours = hourly_with_hours[:3]
 
             peak_analysis.append({
                 'date': target_date.strftime('%Y-%m-%d'),

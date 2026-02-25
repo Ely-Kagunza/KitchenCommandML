@@ -73,7 +73,7 @@ export const PeakHours: React.FC<PeakHoursProps> = ({ restaurantId, daysAhead = 
 
   return (
     <div
-      className="w-full rounded-xl shadow-md border p-6"
+      className="w-full rounded-xl shadow-md border p-6 mb-8" /* card spacing */
       style={{
         backgroundColor: currentTheme.colors.surface,
         borderColor: currentTheme.colors.border,
@@ -100,7 +100,7 @@ export const PeakHours: React.FC<PeakHoursProps> = ({ restaurantId, daysAhead = 
       </div>
 
       {/* Peak Hours Table */}
-      <div className="mb-6 overflow-x-auto">
+      <div className="mb-8 overflow-x-auto"> /* more bottom space before chart */
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: `2px solid ${currentTheme.colors.border}` }}>
@@ -160,7 +160,7 @@ export const PeakHours: React.FC<PeakHoursProps> = ({ restaurantId, daysAhead = 
       </div>
 
       {/* Chart */}
-      <div className="w-full h-80">
+      <div className="w-full mb-8" style={{ height: '320px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={currentTheme.colors.border} />

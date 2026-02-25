@@ -64,7 +64,7 @@ export const DemandForecast: React.FC<DemandForecastProps> = ({ restaurantId }) 
 
     return (
       <div
-        className="rounded-xl shadow-md border p-6"
+        className="rounded-xl shadow-md border p-6 mb-8" /* spacing between multiple forecast cards */
         style={{
           backgroundColor: currentTheme.colors.surface,
           borderColor: currentTheme.colors.border,
@@ -130,39 +130,40 @@ export const DemandForecast: React.FC<DemandForecastProps> = ({ restaurantId }) 
           </div>
         </div>
   
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {/* Stats - Horizontal Rectangular Containers */}
+        <div className="grid grid-cols-3 gap-20 mb-8" style={{backgroundColor: currentTheme.colors.borderLight}}>
           <div
-            className="rounded-xl p-5 border overflow-hidden"
+            className="rounded-lg p-6 border border-r-0 flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow border-l-4"
             style={{
-              background: `linear-gradient(to bottom right, ${currentTheme.colors.primaryLight}, ${currentTheme.colors.primary}10)`,
-              borderColor: currentTheme.colors.primary,
+              backgroundColor: currentTheme.colors.backgroundSecondary,
+              borderColor: currentTheme.colors.backgroundSecondary,
+              borderLeftColor: currentTheme.colors.primary,
             }}
           >
             <p
-              className="text-xs uppercase tracking-wide font-semibold mb-2"
-              style={{ color: currentTheme.colors.textSecondary }}
+              className="text-xs uppercase tracking-wide font-semibold mb-3"
+              style={{ color: currentTheme.colors.primary }}
             >
               Total Predicted Orders
             </p>
-            <p className="text-3xl font-bold leading-tight" style={{ color: currentTheme.colors.primary }}>
+            <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
               {predictions.reduce((sum, p) => sum + p.predicted_orders, 0)}
             </p>
           </div>
           <div
-            className="rounded-xl p-5 border overflow-hidden"
+            className="rounded-lg p-6 border border-l-0 flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow"
             style={{
-              background: `linear-gradient(to bottom right, ${currentTheme.colors.successLight}, ${currentTheme.colors.success}10)`,
-              borderColor: currentTheme.colors.success,
+              backgroundColor: currentTheme.colors.backgroundSecondary,
+              borderColor: currentTheme.colors.backgroundSecondary,
             }}
           >
             <p
-              className="text-xs uppercase tracking-wide font-semibold mb-2"
+              className="text-xs uppercase tracking-wide font-semibold mb-3"
               style={{ color: currentTheme.colors.textSecondary }}
             >
               Average Orders
             </p>
-            <p className="text-3xl font-bold leading-tight" style={{ color: currentTheme.colors.success }}>
+            <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
               {Math.round(
                 predictions.reduce((sum, p) => sum + p.predicted_orders, 0) /
                   predictions.length
@@ -170,26 +171,26 @@ export const DemandForecast: React.FC<DemandForecastProps> = ({ restaurantId }) 
             </p>
           </div>
           <div
-            className="rounded-xl p-5 border overflow-hidden"
+            className="rounded-lg p-6 border flex flex-col justify-center min-h-[120px] hover:shadow-lg transition-shadow"
             style={{
-              background: `linear-gradient(to bottom right, ${currentTheme.colors.secondaryLight}, ${currentTheme.colors.secondary}10)`,
-              borderColor: currentTheme.colors.secondary,
+              backgroundColor: currentTheme.colors.backgroundSecondary,
+              borderColor: currentTheme.colors.backgroundSecondary,
             }}
           >
             <p
-              className="text-xs uppercase tracking-wide font-semibold mb-2"
+              className="text-xs uppercase tracking-wide font-semibold mb-3"
               style={{ color: currentTheme.colors.textSecondary }}
             >
               Peak Orders
             </p>
-            <p className="text-3xl font-bold leading-tight" style={{ color: currentTheme.colors.secondary }}>
+            <p className="text-4xl font-bold" style={{ color: currentTheme.colors.text }}>
               {Math.max(...predictions.map((p) => p.predicted_orders))}
             </p>
           </div>
         </div>
   
         {/* Chart */}
-        <div className="w-full h-96">
+        <div className="w-full mb-8" style={{ height: '400px' }}>
           <ResponsiveContainer width="100%" height="100%">
             {forecastType === 'hourly' ? (
               <LineChart data={predictions}>
